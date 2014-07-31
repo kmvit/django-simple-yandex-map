@@ -1,82 +1,73 @@
 (function ($) {
     $(function () {
-
-        var i = 0
+        var i = 0;
         $('.ymap_field').each(function () {
-            var input = $(this)
+            var input = $(this);
 
-            var ymap_div = $('<div style="float:left"></div>').attr('id', 'ymap_' + i)
-            input.data('ymap_div', ymap_div)
+            var ymap_div = $('<div style="float:left"></div>').attr('id', 'ymap_' + i);
+            input.data('ymap_div', ymap_div);
 
-            q = ymap_div.insertAfter(input)
-            q.css({'width': parseInt(input.attr('data-size_width')), 'height': parseInt(input.attr('data-size_height'))})
-            init_map(input)
+            q = ymap_div.insertAfter(input);
+
+            q.css({ 'width': input.data('size_width'), 'height': input.data('size_height') });
+            init_map(input);
             i++
         })
     })
-})(django.jQuery)
+})(django.jQuery);
 
 function init_map(input) {
     ymaps.ready(function () {
 
         var map = new ymaps.Map(input.data('ymap_div').attr('id'), {
             center: [41, 82],
-            zoom: 1
+            zoom: 7
         });
-        var searchControl = new ymaps.control.SearchControl({noPlacemark: true});
+        input.data('ymap', map);
+
+        var searchControl = new ymaps.control.SearchControl({
+            noPlacemark: true,
+            width: 500
+        });
+        searchControl.events.add('resultselect', function() {
+            searchControl.getResult(searchControl.state.get('currentIndex')).then(function (result) {
+                input.val(result.properties.get('text'));
+                $('.ymaps-b-form-input__input').val(input.val());
+                django_ymap_change(input);
+            });
+        });
 
         map.controls
             .add('zoomControl')
             .add('typeSelector')
-            .add('smallZoomControl', { right: 5, top: 75 })
             .add('mapTools')
             .add(searchControl);
 
         map.events.add('click', function (e) {
-            var coords = e.get('coordPosition')
-            django_ymap_change_mark(input, coords)
-
+            searchControl.search(e.get('coordPosition').join(','));
         });
-
-        input.data("ymap", map)
-        if (input.val().length < 1) {
-            django_ymap_set_center_by_query(input.attr('data-start_query'), map)
-        }
-        else {
-            var currcord = input.val().split(',')
-            currcord = [parseFloat(currcord[0]), parseFloat(currcord[1])]
-            django_ymap_set_center_by_coords(currcord, map)
-            django_ymap_change_mark(input, currcord)
-        }
+        searchControl.search(input.val());
     });
-
 }
 
-function django_ymap_set_center_by_coords(coords, map) {
+function django_ymap_change(input) {
+    ymaps.geocode(input.val(), {results: 1}).then(function (res) {
+        var map = input.data('ymap');
+        var obj = res.geoObjects.get(0);
+        var coords = obj.geometry.getCoordinates();
 
-    map.zoomRange.get(coords).then(function (range) {
-        map.setCenter(coords, range[1])
-    })
-}
+        map.setBounds(obj.properties.get('boundedBy'));
+//        map.zoomRange.get(coords).then(function (range) {
+//            map.setCenter(coords, range[1]);
+//        });
 
-function django_ymap_change_mark(input, coords, title) {
-    var mark = input.data('ymap_mark')
-    var map = input.data('ymap')
-    if (mark) map.geoObjects.remove(mark)
-
-    mark = new ymaps.Placemark(coords, {'hintContent': title})
-    map.geoObjects.add(mark)
-    input.data('ymap_mark', mark)
-
-    input.attr('value', coords.join(','))
-}
-
-function django_ymap_set_center_by_query(query, map) {
-
-    ymaps.geocode(query, { results: 1 }).then(function (res) {
-
-        var coords = res.geoObjects.get(0).geometry.getCoordinates();
-        var firstGeoObject = res.geoObjects.get(0);
-        map.setBounds(firstGeoObject.properties.get('boundedBy'));
+        // move mark
+        var mark = input.data('ymap_mark');
+        if (mark) {
+            map.geoObjects.remove(mark);
+        }
+        mark = new ymaps.Placemark(coords, {'hintContent': input.val()});
+        map.geoObjects.add(mark);
+        input.data('ymap_mark', mark);
     });
 }
