@@ -47,6 +47,17 @@ function init_map(input) {
             searchControl.search(e.get('coordPosition').join(','));
         });
         searchControl.search(input.val());
+
+        // Don't submit whole form on Enter
+        $('.ymaps-b-form-input__input').on('keypress', function(e) {
+            var keycode = (e.keyCode ? e.keyCode : e.which);
+            if (keycode == 13) {
+                e.preventDefault();
+                e.stopPropagation();
+                $('.ymaps-b-search__button .ymaps-b-form-button').trigger('click');
+                return false
+            }
+        });
     });
 }
 
