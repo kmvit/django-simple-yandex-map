@@ -31,7 +31,7 @@ function init_map(input) {
         });
         searchControl.events.add('resultselect', function() {
             searchControl.getResult(searchControl.state.get('currentIndex')).then(function (result) {
-                input.val(result.properties.get('text'));
+                input.val(result.properties.get('text')).trigger('change');
                 $('.ymaps-b-form-input__input').val(input.val());
                 django_ymap_change(input);
             });
