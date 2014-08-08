@@ -1,52 +1,61 @@
-(function ($) {
-    $(function () {
-        var i = 0;
-        $('.ymap_field').each(function () {
-            var input = $(this);
+(function($) {
+    $(function() {
+        $('.ymap_field').each(function(i) {
+            var $input = $(this);
+            var $ymap_div = $('<div style="float:left"></div>').attr('id', 'ymap_' + i);
+            $input.data('ymap_div', $ymap_div);
 
-            var ymap_div = $('<div style="float:left"></div>').attr('id', 'ymap_' + i);
-            input.data('ymap_div', ymap_div);
-
-            q = ymap_div.insertAfter(input);
-
-            q.css({ 'width': input.data('size_width'), 'height': input.data('size_height') });
-            init_map(input);
-            i++
+            $ymap_div.insertAfter($input)
+                .css({
+                    'width': $input.data('size_width'),
+                    'height': $input.data('size_height')
+                });
+            $input.css({
+                'width': $input.data('size_width')
+            });
+            init_map($input);
         })
     })
 })(django.jQuery);
 
-function init_map(input) {
-    ymaps.ready(function () {
-
-        var map = new ymaps.Map(input.data('ymap_div').attr('id'), {
+function init_map($input) {
+    ymaps.ready(function() {
+        var map = new ymaps.Map($input.data('ymap_div').attr('id'), {
             center: [41, 82],
             zoom: 7
         });
-        input.data('ymap', map);
+        $input.data('ymap', map);
 
         var searchControl = new ymaps.control.SearchControl({
             noPlacemark: true,
             width: 500
         });
+        $input.data('search_control', searchControl);
         searchControl.events.add('resultselect', function() {
-            searchControl.getResult(searchControl.state.get('currentIndex')).then(function (result) {
-                input.val(result.properties.get('text')).trigger('change');
-                $('.ymaps-b-form-input__input').val(input.val());
-                django_ymap_change(input);
-            });
+            searchControl.getResult(searchControl.state.get('currentIndex'))
+                .then(function(result) {
+                    django_ymap_search_addr($input, result.properties.get('text'));
+                });
         });
-
         map.controls
             .add('zoomControl')
             .add('typeSelector')
             .add('mapTools')
             .add(searchControl);
-
-        map.events.add('click', function (e) {
-            searchControl.search(e.get('coordPosition').join(','));
+        map.events.add('click', function(e) {
+            django_ymap_search_coords($input, e.get('coordPosition'));
         });
-        searchControl.search(input.val());
+        if ($input.data('keep_raw_coords')) {
+            var addr_coords = $input.val().split(' (');
+            if (addr_coords.length > 1) {
+                var coords = addr_coords[1].substring(0, addr_coords[1].length - 1).split(',');
+                django_move_mark($input, coords, addr_coords[0]);
+            } else {
+                searchControl.search(addr_coords[0]);
+            }
+        } else {
+            searchControl.search($input.val());
+        }
 
         // Don't submit whole form on Enter
         $('.ymaps-b-form-input__input').on('keypress', function(e) {
@@ -61,24 +70,55 @@ function init_map(input) {
     });
 }
 
-function django_ymap_change(input) {
-    ymaps.geocode(input.val(), {results: 1}).then(function (res) {
-        var map = input.data('ymap');
-        var obj = res.geoObjects.get(0);
-        var coords = obj.geometry.getCoordinates();
+function django_ymap_search_coords($input, coords) {
+    $input.data('search_by_coords', coords);
+    $input.data('search_control').search(coords.join(','));
+}
 
-        map.setBounds(obj.properties.get('boundedBy'));
-//        map.zoomRange.get(coords).then(function (range) {
-//            map.setCenter(coords, range[1]);
-//        });
-
-        // move mark
-        var mark = input.data('ymap_mark');
-        if (mark) {
-            map.geoObjects.remove(mark);
-        }
-        mark = new ymaps.Placemark(coords, {'hintContent': input.val()});
-        map.geoObjects.add(mark);
-        input.data('ymap_mark', mark);
+function django_move_mark($input, coords, addr) {
+    var map = $input.data('ymap');
+    var mark = $input.data('ymap_mark');
+    if (mark) {
+        map.geoObjects.remove(mark);
+    }
+    mark = new ymaps.Placemark(coords, {
+        hintContent: addr
+    },{
+        draggable: !!$input.data('keep_raw_coords')
     });
+
+    map.geoObjects.add(mark);
+    $input.data('ymap_mark', mark);
+
+    if ($input.data('keep_raw_coords')) {
+        $input.val(addr + ' (' + coords.join(',') +')');
+
+        mark.events.add('dragend', function(e) {
+            django_ymap_search_coords($input, e.get('target').geometry.getCoordinates());
+        });
+    } else {
+        $input.val(addr);
+    }
+    $input.trigger('change');
+}
+
+function django_ymap_search_addr($input, addr) {
+    $('.ymaps-b-form-input__input').val(addr);
+    if ($input.data('keep_raw_coords') && $input.data('search_by_coords')) {
+        django_move_mark($input, $input.data('search_by_coords'), addr);
+    } else {
+        ymaps.geocode(addr, {results: 1}).then(function(res) {
+            var map = $input.data('ymap');
+            var obj = res.geoObjects.get(0);
+            var coords = obj.geometry.getCoordinates();
+
+            if ($input.data('zoom_on_change')) {
+                map.setBounds(obj.properties.get('boundedBy'));
+                map.zoomRange.get(coords).then(function(range) {
+                    map.setCenter(coords, range[1]);
+                });
+            }
+            django_move_mark($input, coords, addr);
+        });
+    }
 }
