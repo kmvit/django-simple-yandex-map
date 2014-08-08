@@ -89,6 +89,7 @@ function django_move_mark($input, coords, addr) {
 
     map.geoObjects.add(mark);
     $input.data('ymap_mark', mark);
+    map.setCenter(coords);
 
     if ($input.data('keep_raw_coords')) {
         $input.val(addr + ' (' + coords.join(',') +')');
@@ -108,17 +109,7 @@ function django_ymap_search_addr($input, addr) {
         django_move_mark($input, $input.data('search_by_coords'), addr);
     } else {
         ymaps.geocode(addr, {results: 1}).then(function(res) {
-            var map = $input.data('ymap');
-            var obj = res.geoObjects.get(0);
-            var coords = obj.geometry.getCoordinates();
-
-            if ($input.data('zoom_on_change')) {
-                map.setBounds(obj.properties.get('boundedBy'));
-                map.zoomRange.get(coords).then(function(range) {
-                    map.setCenter(coords, range[1]);
-                });
-            }
-            django_move_mark($input, coords, addr);
+            django_move_mark($input, res.geoObjects.get(0).geometry.getCoordinates(), addr);
         });
     }
 }
