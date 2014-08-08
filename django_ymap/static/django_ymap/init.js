@@ -107,6 +107,7 @@ function django_ymap_search_addr($input, addr) {
     $('.ymaps-b-form-input__input').val(addr);
     if ($input.data('keep_raw_coords') && $input.data('search_by_coords')) {
         django_move_mark($input, $input.data('search_by_coords'), addr);
+        $input.data('search_by_coords', false);
     } else {
         ymaps.geocode(addr, {results: 1}).then(function(res) {
             django_move_mark($input, res.geoObjects.get(0).geometry.getCoordinates(), addr);
