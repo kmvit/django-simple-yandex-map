@@ -1,5 +1,4 @@
-from setuptools import setup
-from setuptools import find_packages
+from setuptools import setup, find_packages
 
 setup(
     name='django_ymap',
@@ -11,7 +10,8 @@ setup(
     author='xacce, maxvyaznikov',
     url='https://github.com/maxvyaznikov/django-simple-yandex-map',
 
-    packages=find_packages(exclude=['demo']),
+    packages=find_packages(),
+    platforms='any',
     classifiers=[
         'Framework :: Django',
         'Development Status :: 5 - Production/Stable',
