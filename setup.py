@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='django_ymap',
-    version='1.2',
+    version='1.3',
 
     description='Simple Yandex.Maps integration into admin panel',
     keywords='django, yandex, maps, admin',
