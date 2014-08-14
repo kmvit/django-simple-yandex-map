@@ -1,0 +1,36 @@
+{% load ymapcoord %}
+{% comment %}
+    @param id (string) - for unique name of map
+    @param address (string value of field YmapCoord)
+{% endcomment %}
+
+<div id="ymap_{{ id }}" class="django_ymap"></div>
+
+<script src="http://api-maps.yandex.ru/2.0/?load=package.full&lang=ru-RU"></script>
+{% with address|ymapcoord__coordinates as coords %}
+    {% with address|ymapcoord__address as addr %}
+        <script type="text/javascript">
+            ymaps.ready(function() {
+                var myMap = new ymaps.Map("ymap_{{ id }}", {
+                        center: [{{ coords|default:"55.836681,37.263244" }}],
+                        zoom: 15,
+                        behaviors: ['default', 'scrollZoom']
+                    });
+                myMap.controls
+                    .add('zoomControl')
+                    .add('typeSelector');
+                {% if coords %}
+                    myMap.balloon.open([{{ coords }}], {
+                        contentBody: '{{ addr }}'
+                    }, {closeButton: false});
+                {% else %}
+                    ymaps.geocode('{{ addr }}', {results: 1}).then(function(res) {
+                        myMap.balloon.open(res.geoObjects.get(0).geometry.getCoordinates(), {
+                            contentBody: '{{ addr }}'
+                        }, {closeButton: false});
+                    });
+                {% endif %}
+            });
+        </script>
+    {% endwith %}
+{% endwith %}

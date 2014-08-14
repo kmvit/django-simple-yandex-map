@@ -13,7 +13,7 @@ def ymapcoord__address(value):
 @register.filter
 def ymapcoord__coordinates(value):
     if value is not None:
-        bits = value.split(' (')[0]
+        bits = value.split(' (')
         return bits[1] if len(bits) > 1 else None
     else:
         return None
