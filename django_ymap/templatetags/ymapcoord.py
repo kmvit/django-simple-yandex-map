@@ -14,6 +14,6 @@ def ymapcoord__address(value):
 def ymapcoord__coordinates(value):
     if value is not None:
         bits = value.split(' (')
-        return bits[1] if len(bits) > 1 else None
+        return bits[1].replace(')', '') if len(bits) > 1 else None
     else:
         return None
